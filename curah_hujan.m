@@ -22,7 +22,7 @@ function varargout = curah_hujan(varargin)
 
 % Edit the above text to modify the response to help curah_hujan
 
-% Last Modified by GUIDE v2.5 16-May-2022 23:25:22
+% Last Modified by GUIDE v2.5 24-May-2022 14:20:43
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -58,6 +58,7 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
+
 % UIWAIT makes curah_hujan wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
@@ -82,17 +83,17 @@ function text9_DeleteFcn(hObject, eventdata, handles)
 
 
 function Tx_Callback(hObject, eventdata, handles)
-% hObject    handle to Tx (see GCBO)
+% hObject    handle to Tn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of Tx as text
-%        str2double(get(hObject,'String')) returns contents of Tx as a double
+% Hints: get(hObject,'String') returns contents of Tn as text
+%        str2double(get(hObject,'String')) returns contents of Tn as a double
 
 
 % --- Executes during object creation, after setting all properties.
 function Tx_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Tx (see GCBO)
+% hObject    handle to Tn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -202,14 +203,15 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % read data laporan iklim harian bali
-dl = table2array(readtable('laporan_iklim_harian.xlsx', 'Range', 'B261:G506'));
-tl = table2array(readtable('laporan_iklim_harian.xlsx', 'Range', 'H261:H506'));
+filename = 'laporan_iklim_harian.xlsx';
+dl = table2array(readtable(filename, 'Range', 'B261:G506'));
+tl = table2array(readtable(filename, 'Range', 'H261:H506'));
 dl = dl.';
 tl = tl.';
 
 % get data input
 Tn = str2double(get(handles.Tn,'string'));
-Tx = str2double(get(handles.Tx,'string'));
+Tx = str2double(get(handles.Tn,'string'));
 ss = str2double(get(handles.ss,'string'));
 ff_x = str2double(get(handles.ff_x,'string'));
 ddd_x = str2double(get(handles.ddd_x,'string'));
@@ -220,12 +222,12 @@ n = [Tn Tx ss ff_x ddd_x ff_avg];
 maxN = max(n);
 minN = min(n);
 
-Tn = ((Tn-minN)/(maxN-minN));
-Tx = ((Tx-minN)/(maxN-minN));
-ss = ((ss-minN)/(maxN-minN));
-ff_x = ((ff_x-minN)/(maxN-minN));
-ddd_x = ((ddd_x-minN)/(maxN-minN));
-ff_avg = ((ff_avg-minN)/(maxN-minN));
+Tn = (((Tn-minN))/(maxN-minN));
+Tx = (((Tx-minN))/(maxN-minN));
+ss = (((ss-minN))/(maxN-minN));
+ff_x = (((ff_x-minN))/(maxN-minN));
+ddd_x = (((ddd_x-minN))/(maxN-minN));
+ff_avg = (((ff_avg-minN))/(maxN-minN));
 
 % transpose
 x = [Tn Tx ss ff_x ddd_x ff_avg];
@@ -233,15 +235,18 @@ transposeX = x.';
 
 % network
 net = newlin([0 1; 0 1; 0 1; 0 1; 0 1; 0 1],1);
-net.IW{1,1,1,1,1,1} = [1 1 1 1 1 1];
+net.IW{1,1,1,1,1,1} = [1 -1 1 -1 1 -1];
 net.b{1} = [1];
 
+net.trainParam.epochs=100;
 net = train(net,dl,tl);
-hujan = sim(net, transposeX);
-%disp(hujan);
-%disp(net.IW{1,1,1,1,1,1});
-%disp(net.b{1});
-%hujan = ((maxN-minN)/2+minN);
+hujan = sim(net, transposeX)
+
+disp(net.IW{1,1,1,1,1,1});
+disp(net.b{1});
+
+% denormalisasi
+hujan = ((((hujan-0.1)*(maxN-minN))/0.8)+minN);
 set(handles.RR,'string',hujan);
 
 function RR_Callback(hObject, eventdata, handles)
@@ -289,9 +294,9 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on button press in pushbutton2.
-function pushbutton2_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton2 (see GCBO)
+% --- Executes on button press in btResetData.
+function btResetData_Callback(hObject, eventdata, handles)
+% hObject    handle to btResetData (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 set(handles.Tn,'string','');
@@ -301,3 +306,37 @@ set(handles.ff_x,'string','');
 set(handles.ddd_x,'string','');
 set(handles.ff_avg,'string','');
 set(handles.RR,'string','');
+
+
+% --- Executes on button press in btShowData.
+function btShowData_Callback(hObject, eventdata, handles)
+% hObject    handle to btShowData (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+filename = 'laporan_iklim_harian.xlsx';
+dataset = xlsread(filename, 'B10:H255');
+
+set(handles.uitable1, 'Data', dataset, 'ColumnName', {'Temp Min', 'Temp Max', 'Penyinaran', 'Kecepatan Angin Max', 'Arah Angin', 'Kecepatan Angin Rata-rata', 'Curah Hujan'});
+
+
+
+function Tn_Callback(hObject, eventdata, handles)
+% hObject    handle to Tn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of Tn as text
+%        str2double(get(hObject,'String')) returns contents of Tn as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function Tn_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to Tn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
